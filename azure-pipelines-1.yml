@@ -41,3 +41,7 @@ stages:
             containerRegistry: $(dockerRegistryServiceConnection)
             tags: |
               $(tag)
+        - task: VSBuild@1
+          inputs:
+            solution: '**\*.sln'
+            vsVersion: '17.0'
