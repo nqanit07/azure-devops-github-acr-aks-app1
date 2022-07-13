@@ -18,7 +18,7 @@ variables:
   ADO_ENV_DEV: "dev-env"
   
   location: 'Central US'
-  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/MCH-1476')]
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
   la_template_json: 'SampleLogicApps/EmailValidationLogicApp/LogicApp.json'
   la_template_parameters_json: 'SampleLogicApps/EmailValidationLogicApp/LogicApp.parameters.json'
   artifactName: 'LA_artifact'
