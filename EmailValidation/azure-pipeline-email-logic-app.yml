@@ -1,0 +1,74 @@
+trigger:
+  branches:
+    include:
+    - main
+    - MCH-1476
+  
+  paths: 
+    include:
+      - EmailValidation/azure-pipeline-email-logic-app.yaml
+      - SampleLogicApps/EmailValidationLogicApp/
+
+pr: none
+
+variables:
+  AZ_SUB_DEV: 'Azure subscription 1'
+  AZ_SUB_ID_DEV: '1126c973-81c1-487d-9996-b5f05a73e4b1'
+  AZ_RESOURCEGROUP_DEV: 'terraform-storage-rg'
+  ADO_ENV_DEV: "dev-env"
+  
+  location: 'Central US'
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/MCH-1476')]
+  la_template_json: 'SampleLogicApps/EmailValidationLogicApp/LogicApp.json'
+  la_template_parameters_json: 'SampleLogicApps/EmailValidationLogicApp/LogicApp.parameters.json'
+  artifactName: 'LA_artifact'
+
+stages:
+  - stage: Build_LA_DEV
+    condition: and(succeeded(), eq(variables.isMain, true))
+    displayName: 'Build ARM deployment template for the Logic App'
+    jobs:
+      - job: 'Build'
+        displayName: 'Build job'
+        pool:
+          vmImage: windows-2019
+        steps:
+          - task: CopyFiles@2
+            inputs:
+              sourceFolder: '$(Build.SourcesDirectory)'
+              targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact: drop'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: '$(variables.artifactName)'
+
+  - stage: Deploy_LA_DEV
+    dependsOn: Build_LA_DEV
+    displayName: 'Deploy the ARM deployment template'
+    condition: and(succeeded(), eq(variables.isMain, true))
+    jobs:
+      - deployment: Deploy
+        displayName: 'Deploy job'
+        pool:
+          vmImage: windows-2019
+        environment: $(ADO_ENV_DEV)
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  displayName: 'Download Artifacts'
+                  inputs:
+                    artifactName: '$(variables.artifactName)'
+                - task: AzureResourceManagerTemplateDeployment@3
+                  displayName: 'ARM Template deployment: Logic App on Resource Group scope'
+                  inputs:
+                    azureResourceManagerConnection: ${{ variables.AZ_SUB_DEV }}
+                    subscriptionId: ${{ variables.AZ_SUB_ID_DEV }}
+                    resourceGroupName: '$(variables.AZ_RESOURCEGROUP_DEV)'
+                    location: '$(variables.Location)'
+                    csmFile: '$(System.DefaultWorkingDirectory)/${{ variables.la_template_json }}'
+                    csmParametersFile: '$(System.DefaultWorkingDirectory)/${{ variables.la_template_parameters_json }}'
+                    overrideParameters: '-environmentTag "dev" -logicAppName "la-validateaddress-mch-dataplatform-dev" -logicAppLocation "$(variables.Location)"'
