@@ -31,7 +31,7 @@ stages:
       - job: 'Build'
         displayName: 'Build job'
         pool:
-          vmImage: windows-2019
+          name: 'agent-pool1'
         steps:
           - task: CopyFiles@2
             inputs:
